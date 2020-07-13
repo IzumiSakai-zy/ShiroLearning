@@ -1,7 +1,10 @@
 # ShiroLearning
 学习Shiro安全框架
 
+## Shito
+
 ### Shiro与Spring security
+
 * Shiro比Spring security更简单，更容易上手
 * 在spring cloud微服务中为了统一技术栈为spring家族往往会选择spring security而不是shiro
 ****************
@@ -533,3 +536,88 @@ Shiro中的授权实现
   </body>
   </html>
   ```
+
+********************************
+
+## Sping Secuity
+
+******************
+
+### 基础概念
+
+* 会话机制：会话系统就是为了保持当前用户登录状态所提供的机制，有session和token两种常用机制
+  * token会话机制：首次认证通过后服务端发送给客户端一个令牌token，下次再请求时就携带token再次发送请求
+  * session和token两者之间的区别：
+    * session：服务端需要存储session信息，客户端要支持cookie
+    * token：服务端不需要存储信息，并且不限制存储方式
+
+******************
+
+### 用户认证授权
+
+* 导入依赖
+
+  ```XML
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+  </dependency>
+  ```
+
+* 核心类和注解、
+
+  * `WebSecurityConfigurationAdapter`——自定义security策略
+  * ``
+
+* 链式编程实现
+
+  * 首先继承`WebSecurityConfigurerAdapter`类，并注解开启
+  * `protected void configure(HttpSecurity http)`这个方法是控制授权
+    * 可以按照角色资源授权，使用链式编程
+    * 无权限可以跳转到登录页面
+      * loginPage("/toLogin")是登录的HTML页面
+      * loginProcessingUrl("/login")是处理登录表单的action地址
+    * 可以实现注销功能
+    * 可以开启remember me
+  * 认证可以从密码认证，也可以从JDBC数据库认证，但密码必须加密，否则会出错
+
+  ```java
+  @EnableWebSecurity
+  public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
+      //授权
+      @Override
+      protected void configure(HttpSecurity http) throws Exception {
+          //按照角色授权
+          http.authorizeRequests()
+                  .antMatchers("/","/index.html").permitAll()
+                  .antMatchers("/level1/**").hasRole("vip1")
+                  .antMatchers("/level2/**").hasRole("vip2")
+                  .antMatchers("/level3/**").hasRole("vip3");
+          //默认跳到登录页面
+          http.formLogin()
+                  .loginPage("/toLogin")
+                  .loginProcessingUrl("/login")
+                  .defaultSuccessUrl("/")
+                  .permitAll();
+          //注销
+          http.logout()
+                  .logoutUrl("/toLogout")
+                  .logoutSuccessUrl("/").permitAll();
+          //开启记住我功能。本质就是加了一个cookie
+          http.rememberMe().rememberMeParameter("remember");
+      }
+  
+      //认证
+      @Override
+      protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+          //从内存认证
+          auth.inMemoryAuthentication().passwordEncoder(new BCryptPasswordEncoder())
+                  .withUser("Izumi Sakai").password(new BCryptPasswordEncoder().encode("123456IS")).roles("vip1","vip2")
+                  .and()
+                  .withUser("Zhang San").password(new BCryptPasswordEncoder().encode("123456ZS")).roles("vip3");
+          //从jdbc数据库认证
+          //auth.jdbcAuthentication();
+      }
+  }
+  ```
+
